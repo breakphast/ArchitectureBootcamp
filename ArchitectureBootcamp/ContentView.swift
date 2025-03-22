@@ -59,24 +59,24 @@ import SwiftUI
 @MainActor
 class DataManager {
     let service: DataService
-    var products = [Product]()
     
     init(service: DataService) {
         self.service = service
     }
     
-    func getProducts() async throws {
-        products = try await service.getProducts()
+    func getProducts() async throws -> [Product] {
+        try await service.getProducts()
     }
 }
 
 struct ContentView: View {
     @Environment(DataManager.self) private var dataManager
+    @State private var products = [Product]()
     
     var body: some View {
         VStack {
             VStack {
-                ForEach(dataManager.products) { product in
+                ForEach(products) { product in
                     Text(product.title)
                 }
             }
@@ -89,7 +89,7 @@ struct ContentView: View {
     
     private func loadData() async {
         do {
-            try await dataManager.getProducts()
+            products = try await dataManager.getProducts()
         } catch {
             
         }
