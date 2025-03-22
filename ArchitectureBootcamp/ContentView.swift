@@ -53,6 +53,21 @@ import SwiftUI
  - Business logic is not testable
  - Massive View Controller
  
+ 4. MVVM Architecture
+ 
+ - DataManager is shared across the app, but accessed from the ViewModel
+ - ViewModels are responsible for business logic
+ - ViewModel holds the array of products
+ 
+ Pros:
+ - Separated the View from Business Logic
+ - Business logic is now testable
+ - View code is much cleaner
+ 
+ Cons:
+ - More difficult to set up and inject dependencies
+ - ViewModel lifecycle is outside of View lifecycle (cannot use SwiftUI Property Wrappers)
+ 
  */
 
 @Observable
@@ -69,34 +84,43 @@ class DataManager {
     }
 }
 
-struct ContentView: View {
-    @Environment(DataManager.self) private var dataManager
-    @State private var products = [Product]()
+@Observable
+class ContentViewModel {
+    var products = [Product]()
+    let dataManager: DataManager
     
-    var body: some View {
-        VStack {
-            VStack {
-                ForEach(products) { product in
-                    Text(product.title)
-                }
-            }
-        }
-        .padding()
-        .task {
-            await loadData()
-        }
+    init(dataManager: DataManager) {
+        self.dataManager = dataManager
     }
     
-    private func loadData() async {
+    func loadData() async {
         do {
             products = try await dataManager.getProducts()
         } catch {
             
         }
     }
+    
+}
+
+struct ContentView: View {
+    @State var viewModel: ContentViewModel
+    
+    var body: some View {
+        VStack {
+            VStack {
+                ForEach(viewModel.products) { product in
+                    Text(product.title)
+                }
+            }
+        }
+        .padding()
+        .task {
+            await viewModel.loadData()
+        }
+    }
 }
 
 #Preview {
-    ContentView()
-        .environment(DataManager(service: MockDataService()))
+    ContentView(viewModel: ContentViewModel(dataManager: DataManager(service: MockDataService())))
 }
