@@ -25,10 +25,24 @@ import SwiftUI
  - Not testable, mockable, or reusable
  
  
+ 2. MV Architecture (Vanilla SwiftUI)
+ 
+ - DataManager is shared across the app
+ - DataManager is responsible for business and data logic
+ 
+ Pros:
+ - Less code
+ - Easy to reuse business logic
+ 
+ Cons:
+ - Tightly couple the business and data logic
+ - "Too easy" to reuse data (other views can affect each other)
+ 
  
  3. MVC Architecture (Vanilla SwiftUI)
  
- - There is a DataManager, Views are responsible for business logic but not data logic
+ - DataManager is shared across the app
+ - Views are responsible for business logic but not data logic
  - View holds the array of products
  
  Pros:
@@ -45,25 +59,24 @@ import SwiftUI
 @MainActor
 class DataManager {
     let service: DataService
+    var products = [Product]()
     
     init(service: DataService) {
         self.service = service
     }
     
-    func getProducts() async throws -> [Product] {
-        try await service.getProducts()
+    func getProducts() async throws {
+        products = try await service.getProducts()
     }
 }
 
 struct ContentView: View {
     @Environment(DataManager.self) private var dataManager
     
-    @State private var products = [Product]()
-    
     var body: some View {
         VStack {
             VStack {
-                ForEach(products) { product in
+                ForEach(dataManager.products) { product in
                     Text(product.title)
                 }
             }
@@ -76,7 +89,7 @@ struct ContentView: View {
     
     private func loadData() async {
         do {
-            products = try await dataManager.getProducts()
+            try await dataManager.getProducts()
         } catch {
             
         }
