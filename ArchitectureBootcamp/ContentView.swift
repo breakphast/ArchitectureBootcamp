@@ -72,6 +72,12 @@ import SwiftUI
 
 @Observable
 @MainActor
+class UserManager {
+    
+}
+
+@Observable
+@MainActor
 class DataManager {
     let service: DataService
     
@@ -84,13 +90,16 @@ class DataManager {
     }
 }
 
+@MainActor
 @Observable
 class ContentViewModel {
     var products = [Product]()
     let dataManager: DataManager
+    let userManager: UserManager
     
-    init(dataManager: DataManager) {
-        self.dataManager = dataManager
+    init(container: DependencyContainer) {
+        self.dataManager = container.resolve(DataManager.self)!
+        self.userManager = container.resolve(UserManager.self)!
     }
     
     func loadData() async {
@@ -121,6 +130,30 @@ struct ContentView: View {
     }
 }
 
+@MainActor
+class DependencyContainer {
+    private var services: [String: Any] = [:]
+    
+    func register<T>(_ type: T.Type, service: T) {
+        let key = "\(type)"
+        services[key] = service
+    }
+    
+    func register<T>(_ type: T.Type, service: () -> T) {
+        let key = "\(type)"
+        services[key] = service()
+    }
+    
+    func resolve<T>(_ type: T.Type) -> T? {
+        let key = "\(type)"
+        return services[key] as? T
+    }
+}
+
 #Preview {
-    ContentView(viewModel: ContentViewModel(dataManager: DataManager(service: MockDataService())))
+    let container = DependencyContainer()
+    container.register(DataManager.self, service: DataManager(service: MockDataService()))
+    container.register(UserManager.self, service: UserManager())
+    
+    return ContentView(viewModel: ContentViewModel(container: container))
 }
