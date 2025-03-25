@@ -73,7 +73,9 @@ import SwiftUI
 @Observable
 @MainActor
 class UserManager {
-    
+    func getUser() async throws -> String {
+        ""
+    }
 }
 
 @Observable
@@ -88,12 +90,19 @@ class DataManager {
     func getProducts() async throws -> [Product] {
         try await service.getProducts()
     }
+    
+    func getMovies() async throws -> [String] {
+        ["MovieA"]
+    }
+}
+
+protocol ContentViewModelInteractor {
+    func getProducts() async throws -> [Product]
+    func getUser() async throws -> String
 }
 
 @MainActor
-@Observable
-class ContentViewModel {
-    var products = [Product]()
+struct ProductionContentViewModelInteractor: ContentViewModelInteractor {
     let dataManager: DataManager
     let userManager: UserManager
     
@@ -102,14 +111,47 @@ class ContentViewModel {
         self.userManager = container.resolve(UserManager.self)!
     }
     
+    func getProducts() async throws -> [Product] {
+        try await dataManager.getProducts()
+    }
+    
+    func getUser() async throws -> String {
+        try await userManager.getUser()
+    }
+}
+
+@MainActor
+struct MockContentViewModelInteractor: ContentViewModelInteractor {
+    func getProducts() async throws -> [Product] {
+        [
+            Product(id: 1, title: "This is my first product!")
+        ]
+    }
+    
+    func getUser() async throws -> String {
+        ""
+    }
+}
+
+@MainActor
+@Observable
+class ContentViewModel {
+    let interactor: ContentViewModelInteractor
+    
+    var products = [Product]()
+    
+    init(dependencyProtocol: ContentViewModelInteractor) {
+        self.interactor = dependencyProtocol
+    }
+    
     func loadData() async {
         do {
-            products = try await dataManager.getProducts()
+            let uid = try await interactor.getUser()
+            products = try await interactor.getProducts()
         } catch {
             
         }
     }
-    
 }
 
 struct ContentView: View {
@@ -155,5 +197,7 @@ class DependencyContainer {
     container.register(DataManager.self, service: DataManager(service: MockDataService()))
     container.register(UserManager.self, service: UserManager())
     
-    return ContentView(viewModel: ContentViewModel(container: container))
+    return ContentView(
+        viewModel: ContentViewModel(dependencyProtocol: MockContentViewModelInteractor())
+    )
 }
