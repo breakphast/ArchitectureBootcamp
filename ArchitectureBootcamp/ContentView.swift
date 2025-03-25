@@ -101,8 +101,13 @@ protocol ContentViewModelInteractor {
     func getUser() async throws -> String
 }
 
+protocol HomeViewModelInteractor {
+    func getMovies() async throws -> [String]
+    func getUser() async throws -> String
+}
+
 @MainActor
-struct ProductionContentViewModelInteractor: ContentViewModelInteractor {
+struct CoreInteractor: ContentViewModelInteractor, HomeViewModelInteractor {
     let dataManager: DataManager
     let userManager: UserManager
     
@@ -115,21 +120,50 @@ struct ProductionContentViewModelInteractor: ContentViewModelInteractor {
         try await dataManager.getProducts()
     }
     
+    func getMovies() async throws -> [String] {
+        try await dataManager.getMovies()
+    }
+    
     func getUser() async throws -> String {
         try await userManager.getUser()
     }
 }
 
+struct HomeView: View {
+    @State var viewModel: HomeViewModel
+    
+    var body: some View {
+        VStack(alignment: .leading) {
+            ForEach(viewModel.movies, id: \.self) { movie in
+                Text(movie)
+                    .foregroundStyle(.green)
+            }
+        }
+        .padding()
+        .task {
+            await viewModel.loadData()
+        }
+    }
+}
+
 @MainActor
-struct MockContentViewModelInteractor: ContentViewModelInteractor {
-    func getProducts() async throws -> [Product] {
-        [
-            Product(id: 1, title: "This is my first product!")
-        ]
+@Observable
+class HomeViewModel {
+    let interactor: HomeViewModelInteractor
+    
+    var movies = [String]()
+    
+    init(interactor: HomeViewModelInteractor) {
+        self.interactor = interactor
     }
     
-    func getUser() async throws -> String {
-        ""
+    func loadData() async {
+        do {
+            let _ = try await interactor.getUser()
+            movies = try await interactor.getMovies()
+        } catch {
+            
+        }
     }
 }
 
@@ -140,13 +174,13 @@ class ContentViewModel {
     
     var products = [Product]()
     
-    init(dependencyProtocol: ContentViewModelInteractor) {
-        self.interactor = dependencyProtocol
+    init(interactor: ContentViewModelInteractor) {
+        self.interactor = interactor
     }
     
     func loadData() async {
         do {
-            let uid = try await interactor.getUser()
+            let _ = try await interactor.getUser()
             products = try await interactor.getProducts()
         } catch {
             
@@ -159,10 +193,8 @@ struct ContentView: View {
     
     var body: some View {
         VStack {
-            VStack {
-                ForEach(viewModel.products) { product in
-                    Text(product.title)
-                }
+            ForEach(viewModel.products) { product in
+                Text(product.title)
             }
         }
         .padding()
@@ -198,6 +230,10 @@ class DependencyContainer {
     container.register(UserManager.self, service: UserManager())
     
     return ContentView(
-        viewModel: ContentViewModel(dependencyProtocol: MockContentViewModelInteractor())
+        viewModel: ContentViewModel(interactor: CoreInteractor(container: container))
     )
+    
+//    return HomeView(
+//        viewModel: HomeViewModel(interactor: CoreInteractor(container: container))
+//    )
 }
