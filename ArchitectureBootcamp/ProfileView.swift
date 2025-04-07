@@ -7,21 +7,13 @@
 
 import SwiftUI
 
-//enum NavigationDestinationOption: Hashable {
-//    case integer(int: Int)
-//    case string(string: String)
-//    case someOtherScreen(bool: Bool)
-//}
-
-extension View {
-    func any() -> AnyView {
-        AnyView(self)
-    }
-}
-
 struct AnyDestination: Hashable {
     let id = UUID().uuidString
-    var destination: () -> AnyView
+    var destination: AnyView
+    
+    init<T: View>(destination: T) {
+        self.destination = AnyView(destination)
+    }
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -32,51 +24,43 @@ struct AnyDestination: Hashable {
     }
 }
 
-struct ProfileView: View {
+protocol Router {
+    func showScreen<T: View>(@ViewBuilder destination: () -> T)
+}
+
+struct RouterView<Content: View>: View, Router {
     @State private var path = [AnyDestination]()
+    @ViewBuilder var content: (Router) -> Content
     
     var body: some View {
         NavigationStack(path: $path) {
-            VStack(spacing: 40) {
-                Button {
-                    path.append(AnyDestination(destination: {
-                        Text("NEW VALUE").any()
-                    }))
-                } label: {
-                    Text("CLICK ME STRING")
+            content(self)
+                .navigationDestination(for: AnyDestination.self) { value in
+                    value.destination
                 }
-                
-                Button {
-                    path.append(AnyDestination(destination: {
-                        Text("12323").any()
-                    }))
-                } label: {
-                    Text("CLICK ME INT")
-                }
-                
-                Button {
-                    goToContentView()
-                } label: {
-                    Text("CLICK ME BOOL")
-                }
-            }
-            .navigationDestination(for: AnyDestination.self) { value in
-                value.destination()
-            }
         }
     }
     
-    func goToContentView() {
-        let container = DependencyContainer()
-        container.register(DataManager.self, service: DataManager(service: MockDataService()))
-        container.register(UserManager.self, service: UserManager())
-        
-        path.append(AnyDestination(destination: {
-            ContentView(
-                viewModel: ContentViewModel(interactor: CoreInteractor(container: container))
-            )
-            .any()
-        }))
+    func showScreen<T: View>(@ViewBuilder destination: () -> T) {
+        let destination = AnyDestination(destination: destination())
+        path.append(destination)
+    }
+}
+
+struct ProfileView: View {
+    
+    var body: some View {
+        RouterView { router in
+            VStack(spacing: 40) {
+                Button {
+                    router.showScreen {
+                        Text("SOME OTHER SCREEN")
+                    }
+                } label: {
+                    Text("Click me")
+                }
+            }
+        }
     }
 }
 
