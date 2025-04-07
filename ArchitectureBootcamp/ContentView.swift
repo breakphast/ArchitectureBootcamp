@@ -68,6 +68,41 @@ import SwiftUI
  - More difficult to set up and inject dependencies
  - ViewModel lifecycle is outside of View lifecycle (cannot use SwiftUI Property Wrappers)
  
+ 5. MVVM Architecture + DI Container
+ 
+ Pros:
+ - Same as MVVM above, but much easier to manage dependencies
+ 
+ Cons:
+ - Adds abstraction to dependencies (i.e. app will crash if dependency is not there)
+ 
+ 6. MVVM Architecture + Protocols (Interactors)
+ 
+ Pros:
+ - Same as MVVM above, but fully decouples dependencies from ViewModel
+ - Easier to test
+ 
+ Cons:
+ - More work to setup and maintain
+ 
+ 7. MVVM Architecture + Protocols + Shared Conformance (CoreInteractor)
+ 
+ Pros:
+ - Same as #5 above, but easier to setup and maintain
+ 
+ Cons:
+ - Single large interactor per module
+ 
+ 8. MVVM Architecture + Protocols + Shared Conformance + Builder (CoreBuilder)
+ 
+ Pros:
+ - Same as #6 above
+ - Decoupled routing destinations between views
+ - Removed SwiftUI environment entirely
+ 
+ Cons:
+ - More work to setup and maintain
+ 
  */
 
 @Observable
@@ -232,8 +267,4 @@ class DependencyContainer {
     return ContentView(
         viewModel: ContentViewModel(interactor: CoreInteractor(container: container))
     )
-    
-//    return HomeView(
-//        viewModel: HomeViewModel(interactor: CoreInteractor(container: container))
-//    )
 }
