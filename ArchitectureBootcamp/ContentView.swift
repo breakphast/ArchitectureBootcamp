@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CustomRouting
 
 /*
  ARCHITECTURE NOTES:
@@ -103,6 +104,15 @@ import SwiftUI
  Cons:
  - More work to setup and maintain
  
+ 9. VIPER
+ 
+ Pros:
+ - Same as #8 above
+ - Decoupled routing from views
+ 
+ Cons:
+ - More work to setup and maintain
+ 
  */
 
 @Observable
@@ -131,7 +141,7 @@ class DataManager {
     }
 }
 
-protocol ContentViewModelInteractor {
+protocol ContentPresenterInteractor {
     func getProducts() async throws -> [Product]
     func getUser() async throws -> String
 }
@@ -142,7 +152,18 @@ protocol HomeViewModelInteractor {
 }
 
 @MainActor
-struct CoreInteractor: ContentViewModelInteractor, HomeViewModelInteractor {
+struct CoreRouter {
+    let router: Router
+    
+    func goToProductView(product: Product) {
+        router.showScreen(.push) { _ in
+            Text(product.title)
+        }
+    }
+}
+
+@MainActor
+struct CoreInteractor: ContentPresenterInteractor, HomeViewModelInteractor {
     let dataManager: DataManager
     let userManager: UserManager
     
@@ -203,14 +224,23 @@ class HomeViewModel {
 }
 
 @MainActor
+protocol ContentPresenterRouter {
+    func goToProductView(product: Product)
+}
+
+extension CoreRouter: ContentPresenterRouter { }
+
+@MainActor
 @Observable
-class ContentViewModel {
-    let interactor: ContentViewModelInteractor
+class ContentPresenter {
+    let interactor: ContentPresenterInteractor
+    let router: ContentPresenterRouter
     
     var products = [Product]()
     
-    init(interactor: ContentViewModelInteractor) {
+    init(interactor: ContentPresenterInteractor, router: ContentPresenterRouter) {
         self.interactor = interactor
+        self.router = router
     }
     
     func loadData() async {
@@ -221,20 +251,28 @@ class ContentViewModel {
             
         }
     }
+    
+    func onProductPressed(product: Product) {
+        router.goToProductView(product: product)
+    }
 }
 
 struct ContentView: View {
-    @State var viewModel: ContentViewModel
+    @State var presenter: ContentPresenter
     
     var body: some View {
         VStack {
-            ForEach(viewModel.products) { product in
+            ForEach(presenter.products) { product in
                 Text(product.title)
+                    .onTapGesture {
+                        presenter.onProductPressed(product: product)
+                    }
             }
         }
+        .navigationTitle("Content View")
         .padding()
         .task {
-            await viewModel.loadData()
+            await presenter.loadData()
         }
     }
 }
@@ -264,7 +302,12 @@ class DependencyContainer {
     container.register(DataManager.self, service: DataManager(service: MockDataService()))
     container.register(UserManager.self, service: UserManager())
     
-    return ContentView(
-        viewModel: ContentViewModel(interactor: CoreInteractor(container: container))
-    )
+    return RouterView { router in
+        ContentView(
+            presenter: ContentPresenter(
+                interactor: CoreInteractor(container: container),
+                router: CoreRouter(router: router)
+            )
+        )
+    }
 }

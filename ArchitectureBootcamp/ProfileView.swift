@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import CustomRouting
 
 struct ProfileView: View {
        
@@ -87,7 +88,7 @@ struct ProfileView: View {
     private var modalSection: some View {
         Section {
             Button {
-                router.showModal(transition: .move(edge: .bottom), backgroundColor: Color.purple.opacity(0.3), destination: {
+                router.showModal(backgroundColor: Color.purple.opacity(0.3), transition: .move(edge: .bottom), destination: {
                     RoundedRectangle(cornerRadius: 30)
                         .fill(.blue)
                         .frame(maxHeight: 300)

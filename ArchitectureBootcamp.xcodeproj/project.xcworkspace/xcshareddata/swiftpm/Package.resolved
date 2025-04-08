@@ -1,0 +1,15 @@
+{
+  "originHash" : "d44d517e18843eaf88b67c2a05672e8f0b3d003747f31ad87eb94cfd1a06ba34",
+  "pins" : [
+    {
+      "identity" : "customrouting",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/breakphast/CustomRouting.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "726e18585a63f6f0e82026ae3c3f3d01c91438e9"
+      }
+    }
+  ],
+  "version" : 3
+}
